@@ -1,112 +1,26 @@
+# app.py
 import streamlit as st
-from supabase import create_client
-import pandas as pd
-import time
-from datetime import datetime, timedelta
-import uuid
-import hashlib
-import hmac
-import base64
-from cryptography.fernet import Fernet
+from memory_phi import login_signup, get_profile, load_tst_params, init_gift_definitions, supabase, user, profile, tst_params, memory
+from dissipation_phi import run
 
-# =====================================================
-# CONFIGURATION
-# =====================================================
-st.set_page_config(
-    page_title="GEN-Z GABON • SOCIAL NETWORK",
-    page_icon="🌍",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="GEN-Z GABON", page_icon="🌍", layout="wide")
 
-# =====================================================
-# INITIALISATION SUPABASE & FERNET
-# =====================================================
-@st.cache_resource
-def init_supabase():
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
-    return create_client(url, key)
+# Authentification
+if "user" not in st.session_state:
+    login_signup()
+    st.stop()
 
-supabase = init_supabase()
+# Chargement du profil et des paramètres
+st.session_state.profile = get_profile(user.id)
+if st.session_state.profile is None:
+    st.error("Profil introuvable.")
+    st.stop()
 
-@st.cache_resource
-def get_fernet():
-    key = st.secrets.get("fernet_key")
-    if not key:
-        st.error("🔴 Clé Fernet manquante dans les secrets. Ajoutez 'fernet_key'.")
-        st.stop()
-    return Fernet(key.encode())
+st.session_state.tst_params = load_tst_params(st.session_state.profile["username"])
+init_gift_definitions()  # Une seule fois
 
-fernet = get_fernet()
-
-# =====================================================
-# FONCTIONS DE CHIFFREMENT / DÉCHIFFREMENT
-# =====================================================
-def encrypt_text(plain_text: str) -> str:
-    if not plain_text:
-        return ""
-    encrypted = fernet.encrypt(plain_text.encode())
-    return base64.b64encode(encrypted).decode()
-
-def decrypt_text(encrypted_b64: str) -> str:
-    if not encrypted_b64:
-        return ""
-    try:
-        encrypted = base64.b64decode(encrypted_b64)
-        return fernet.decrypt(encrypted).decode()
-    except Exception:
-        return "🔐 Message illisible (erreur de clé)"
-
-# =====================================================
-# FONCTIONS DE HASH (admin)
-# =====================================================
-def hash_string(s: str) -> str:
-    return hashlib.sha256(s.encode()).hexdigest()
-
-def verify_admin_code(email: str, code: str) -> bool:
-    try:
-        admin_email_hash = st.secrets["admin"]["email_hash"]
-        admin_code_hash = st.secrets["admin"]["password_hash"]
-        return hmac.compare_digest(hash_string(email), admin_email_hash) and \
-               hmac.compare_digest(hash_string(code), admin_code_hash)
-    except KeyError:
-        return False
-
-# =====================================================
-# GESTION DE L'AUTHENTIFICATION
-# =====================================================
-def login_signup():
-    st.title("🌍 Bienvenue sur le réseau social GEN-Z")
-    tab1, tab2 = st.tabs(["Se connecter", "Créer un compte"])
-
-    with tab1:
-        with st.form("login_form"):
-            email = st.text_input("Email")
-            password = st.text_input("Mot de passe", type="password")
-            submitted = st.form_submit_button("Connexion")
-            if submitted:
-                try:
-                    res = supabase.auth.sign_in_with_password(
-                        {"email": email, "password": password}
-                    )
-                    st.session_state["user"] = res.user
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erreur de connexion : {e}")
-
-    with tab2:
-        with st.form("signup_form"):
-            new_email = st.text_input("Email")
-            new_password = st.text_input("Mot de passe", type="password")
-            username = st.text_input("Nom d'utilisateur (unique)")
-            admin_code = st.text_input("Code administrateur (si vous en avez un)", type="password")
-            submitted = st.form_submit_button("Créer mon compte")
-            if submitted:
-                if not new_email or not new_password or not username:
-                    st.error("Tous les champs sont obligatoires.")
-                    return
-                try:
+# Lancer l'application
+run()                try:
                     res = supabase.auth.sign_up({
                         "email": new_email,
                         "password": new_password
