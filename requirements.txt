@@ -1,0 +1,11 @@
+streamlit
+supabase
+pandas
+cryptography
+opencv-python-headless
+numpy
+Pillow
+python-dotenv
+httpx
+streamlit-webrtc
+
