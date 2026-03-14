@@ -3,5 +3,8 @@ supabase==2.12.0
 cryptography==44.0.2
 streamlit-webrtc==0.47.1
 av==13.2.0
-setuptools==78.1.0
 pandas==2.2.3
+psutil==6.1.1
+scikit-learn==1.6.1
+numpy==2.2.4
+setuptools==78.1.0
